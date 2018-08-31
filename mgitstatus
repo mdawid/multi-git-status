@@ -23,21 +23,23 @@ DEBUG=0
 
 # Handle commandline options
 if [ "$1" = "--help" ]; then
-    echo "Usage: $0 [-w] [-e] [DIR] [DEPTH=2]" >&2
+    echo "Usage: $0 [-w] [-e] [-ns] [DIR] [DEPTH=2]" >&2
     echo
     echo "Scan for .git dirs under DIR (up to DEPTH dirs deep) and show git status"
     echo
     echo "  -w   Warn about dirs that are not Git repositories"
     echo "  -e   Exclude repos that are 'ok'"
+	echo "  -ns  Exclude stashes"
     exit 1
 fi
 
 WARN_NOT_REPO=0
 EXCLUDE_OK=0
+EXCLUDE_STASHES=0
 
 while [ \! -z "$1" ]; do
     # Stop reading when we don't recognise the arguments anymore
-    [ "$1" != "-w" -a "$1" != "-e" ] && break
+    [ "$1" != "-w" -a "$1" != "-e" -a "$1" != "-ns" ] && break
 
     if [ "$1" = "-w" ]; then
         WARN_NOT_REPO=1
@@ -45,7 +47,9 @@ while [ \! -z "$1" ]; do
     if [ "$1" = "-e" ]; then
         EXCLUDE_OK=1
     fi
-
+	if [ "$1" = "-ns" ]; then
+		EXCLUDE_STASHES=1
+	fi
     shift
 done
 
@@ -145,7 +149,10 @@ do
     UNCOMMITTED=$(git --work-tree "$(dirname "$GIT_DIR")" --git-dir "$GIT_DIR" diff-files --quiet --ignore-submodules --; echo $?)
     UNTRACKED=$(git --work-tree "$(dirname "$GIT_DIR")" --git-dir "$GIT_DIR" ls-files --exclude-standard --others)
     cd "$(dirname "$GIT_DIR")"
+    STASHES=0
+	if [ "$EXCLUDE_STASHES" -ne 1 ]; then
     STASHES=$(git stash list | wc -l)
+	fi
     cd $OLDPWD
 
     # Build up the status string
